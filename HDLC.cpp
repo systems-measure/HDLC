@@ -1,4 +1,5 @@
 #define HDLC_C
+#define HDLC_PRIVATE
 /****************************************************************************/
 /*                              MODULES USED                                */
 /****************************************************************************/
@@ -62,27 +63,37 @@ const uint8_t flag_lookup[] = {0xFC, 0xF9, 0xF3, 0xE7, 0xCF, 0x9F, 0x3F, 0x7E};
 /*                             EXPORTED FUNCTIONS                           */
 /****************************************************************************/
 
-void HDLC_init(hdlc_ch_ctxt_t *hdlc_ch_ctxt, void* instance_cb, Fun_CallBack_HDLC cb)
+void HDLC_init(hdlc_ch_ctxt_t *hdlc_ch_ctxt, hdlc_callback_t *callback)
 {
     clear_hdlc_ctxt(hdlc_ch_ctxt);
+    // -- Check Valid callback context
+    if(callback != NULL){
+        if (callback->cb_RecieverFrame) {
+            memcpy(&hdlc_ch_ctxt->callback, callback, sizeof(hdlc_ch_ctxt->callback));
+        }else hdlc_LogOut("HDLC FRAME: ERROR HDLC context callback is not initialized.\r\n");
+        // -- Default set if need
+        if (!callback->cb_ResetFrameTimeOut) 
+            callback->cb_ResetFrameTimeOut = funCb_HDLC_FrameTimeOut_DEF;
+        if (!callback->cb_StopFrameTimeOut)
+            callback->cb_StopFrameTimeOut = funCb_HDLC_FrameTimeOut_DEF;
+    }else hdlc_LogOut("HDLC FRAME: ERROR HDLC context callback is not initialized.\r\n");
+}
 
-    if(cb != NULL)
-    {
-        hdlc_ch_ctxt->instance_cb = instance_cb;
-        hdlc_ch_ctxt->callback = cb;
-    }
-    else
-    {
-        hdlc_LogOut("\nHDLC FRAME: ERROR HDLC context callback is not initialized");
-        exit(1);
-    }
+void HDLC_reset(hdlc_ch_ctxt_t *ctxt)
+{
+    // --
+    ctxt->state = FLAG_SEARCH;
+    ctxt->err_type = NO_ERR;
+    ctxt->frame_ready = FALSE;
 }
 
 void HDLC(uint8_t inp8, int offset, hdlc_ch_ctxt_t *hdlc_ch_ctxt)
 {
-    detect_hdlc_frame(hdlc_ch_ctxt, inp8, offset);
-    if(TRUE==hdlc_ch_ctxt->frame_ready)
-        handle_hdlc_frame(hdlc_ch_ctxt, offset);
+    if (!hdlc_ch_ctxt->frame_ready) {
+        detect_hdlc_frame(hdlc_ch_ctxt, inp8, offset);
+        if (hdlc_ch_ctxt->frame_ready)
+            handle_hdlc_frame(hdlc_ch_ctxt, offset);
+    }
 }
 
 /****************************************************************************/
@@ -94,31 +105,30 @@ void HDLC(uint8_t inp8, int offset, hdlc_ch_ctxt_t *hdlc_ch_ctxt)
 */
 void handle_hdlc_frame(hdlc_ch_ctxt_t *ctxt, int offset)
 {
-    uint8_t    fr_minus_stuffing[MAX_HDLC_FR_LEN_WITH_STUF]={0};
     uint16_t    valid_bytes = 0;
 
     ctxt->frame_ready = FALSE;
 
-    remove_stuffing(fr_minus_stuffing, ctxt->ready_fr, ctxt->ready_fr_bit_cnt, &valid_bytes, &ctxt->err_type, offset);
-    memset(&ctxt->ready_fr, 0, MAX_HDLC_FR_LEN_WITH_STUF);
+    remove_stuffing(ctxt->frame, ctxt->frame, ctxt->fr_bit_cnt, &valid_bytes, &ctxt->err_type, offset);
 
     if(NO_ERR == ctxt->err_type)
     {
-        if (hdlc_CRC_match(fr_minus_stuffing, valid_bytes))
+        if (hdlc_CRC_match(ctxt->frame, valid_bytes))
         {
-            if(ctxt->callback != NULL)
-                ctxt->callback(ctxt->instance_cb, fr_minus_stuffing, valid_bytes); /* Call Application */
+            ctxt->frame_ready = TRUE;
+            ctxt->callback.cb_StopFrameTimeOut(ctxt->callback.instance_cb);
+            ctxt->callback.cb_RecieverFrame(ctxt->callback.instance_cb, ctxt->frame, valid_bytes); /* Call Application */
         }
         else
         {    
             ctxt->err_type = CRC_MISMATCH;
-            hdlc_LogOut("\n%d\tHDLC FRAME: ERROR %d", offset, ctxt->err_type);
+            hdlc_LogOut("%d\tHDLC FRAME: ERROR %d\r\n", offset, ctxt->err_type);
             ctxt->err_type = NO_ERR;    /* Handle Error & Reset */
         }
     }
     else
     {
-        hdlc_LogOut("\n%d\tHDLC FRAME: ERROR %d", offset, ctxt->err_type);
+        hdlc_LogOut("%d\tHDLC FRAME: ERROR %d\r\n", offset, ctxt->err_type);
         ctxt->err_type = NO_ERR;    /* Handle Error & Reset */
     }
 }
@@ -128,16 +138,10 @@ void handle_hdlc_frame(hdlc_ch_ctxt_t *ctxt, int offset)
 */
 void clear_hdlc_ctxt(hdlc_ch_ctxt_t *hdlc_ch_ctxt)
 {
-    hdlc_ch_ctxt->flag_pos_ctr = 0;
-    hdlc_ch_ctxt->rec_bits=0;
-    hdlc_ch_ctxt->fr_bit_cnt=0;
-    hdlc_ch_ctxt->ready_fr_bit_cnt=0;
-    hdlc_ch_ctxt->frame_ready = FALSE;
+    memset(hdlc_ch_ctxt, 0, sizeof(*hdlc_ch_ctxt));
+    // --
     hdlc_ch_ctxt->state=FLAG_SEARCH;
     hdlc_ch_ctxt->err_type=NO_ERR;
-    memset(&hdlc_ch_ctxt->frame, 0, MAX_HDLC_FR_LEN_WITH_STUF);
-    memset(&hdlc_ch_ctxt->ready_fr, 0, MAX_HDLC_FR_LEN_WITH_STUF);
-    hdlc_ch_ctxt->callback = NULL;
 }
 
 /*
@@ -148,6 +152,9 @@ void detect_hdlc_frame(hdlc_ch_ctxt_t *ctxt, uint8_t rec_byte, int offset)
     uint8_t    i;
     uint16_t    byte_index;
 
+    // -- For each byte, reset the timeout
+    ctxt->callback.cb_ResetFrameTimeOut(ctxt->callback.instance_cb);
+    // -- 
     for(i=0;i<=7;++i)
     {
         /* get next bit */
@@ -192,10 +199,9 @@ void detect_hdlc_frame(hdlc_ch_ctxt_t *ctxt, uint8_t rec_byte, int offset)
 
             if(MAX_HDLC_FR_BITS < ctxt->fr_bit_cnt) /* error: frame length exceeded */
             {
-                memset(&ctxt->frame, 0, MAX_HDLC_FR_LEN_WITH_STUF);
                 ctxt->fr_bit_cnt    = 0;
                 ctxt->state        = FLAG_SEARCH;
-                hdlc_LogOut("\n%d\tHDLC FRAME: ERROR frame length exceeded during RX", offset);
+                hdlc_LogOut("%d\tHDLC FRAME: ERROR frame length exceeded during RX\r\n", offset);
                 break;
             }
 
@@ -207,10 +213,9 @@ void detect_hdlc_frame(hdlc_ch_ctxt_t *ctxt, uint8_t rec_byte, int offset)
 
                 if(MIN_HDLC_FR_BITS > ctxt->fr_bit_cnt) /* error: invalid frame length */
                 {
-                    memset(&ctxt->frame, 0, MAX_HDLC_FR_LEN_WITH_STUF);
                     ctxt->fr_bit_cnt    = 0;
                     ctxt->state        = FLAG_SEARCH;
-                    hdlc_LogOut("\n%d\tHDLC FRAME: ERROR frame length less than %d bits", offset, MIN_HDLC_FR_BITS*8);
+                    hdlc_LogOut("%d\tHDLC FRAME: ERROR frame length less than %d bits\r\n", offset, MIN_HDLC_FR_BITS*8);
                     break;
                 }
 
@@ -220,18 +225,11 @@ void detect_hdlc_frame(hdlc_ch_ctxt_t *ctxt, uint8_t rec_byte, int offset)
                 byte_index        = (ctxt->fr_bit_cnt/8);
                 ctxt->frame[byte_index]    = ((ctxt->frame[byte_index])&(bitmask[ctxt->fr_bit_cnt%8]));
 
-                /* copy frame to caller's copy */
-                memcpy(&ctxt->ready_fr,&ctxt->frame,MAX_HDLC_FR_LEN_WITH_STUF);
-                ctxt->ready_fr_bit_cnt    = ctxt->fr_bit_cnt;
+                /* Ready HDLC frame */
                 ctxt->frame_ready     = TRUE;
-
-                /* reset working copy */
-                memset(&ctxt->frame, 0, MAX_HDLC_FR_LEN_WITH_STUF);
-                ctxt->fr_bit_cnt    = 0;
             }
             else if(HDLC_TERM_FLAG == ctxt->rec_bits)
             {
-                memset(&ctxt->frame, 0, MAX_HDLC_FR_LEN_WITH_STUF);
                 ctxt->fr_bit_cnt    = 0;
                 ctxt->state        = FLAG_SEARCH;
                 break;
@@ -252,18 +250,24 @@ void detect_hdlc_frame(hdlc_ch_ctxt_t *ctxt, uint8_t rec_byte, int offset)
 void remove_stuffing(uint8_t dst_fr[], uint8_t src_fr[], uint16_t bit_cnt, uint16_t *byte_cnt, hdlc_fr_detect_errors_e *err, int offset)
 {
     uint16_t    i;
-    uint16_t    src_byte;
+    uint8_t     src_frame_byte;
+    uint16_t    src_byte, read_src_byte = UINT16_MAX;
     uint16_t    dst_byte;
-    uint8_t    curr_bit;
+    uint8_t     curr_bit;
     uint16_t    pos=0;    
-    uint8_t    ones=0;
+    uint8_t     ones=0;
 
-    for(i=0;i<bit_cnt;++i,++pos)
+    for(i = 0; i < bit_cnt; ++i, ++pos)
     {
-        src_byte=i/8;
-        curr_bit=(src_fr[src_byte]>>(7-(i%8)))&0x01;
-        if(curr_bit)
-        {
+        // -- Get src frame byte
+        src_byte = i / 8;
+        if (read_src_byte != src_byte) {
+            src_frame_byte = src_fr[src_byte];
+            read_src_byte = src_byte;
+        }
+        // -- Get next src frame bit
+        curr_bit = (src_frame_byte >> (7 - (i % 8))) & 0x01;
+        if(curr_bit){
             dst_byte=pos/8;
             dst_fr[dst_byte]= dst_fr[dst_byte] | curr_bit<<(7-(pos%8));
             ++ones;        /* inc. 1s count */
@@ -288,7 +292,7 @@ void remove_stuffing(uint8_t dst_fr[], uint8_t src_fr[], uint16_t bit_cnt, uint1
     {
         if((pos%8)!=0)
         {
-            hdlc_LogOut("\n%d\tHDLC FRAME: ERROR (frame_length_bits%%8)!=0", offset);
+            hdlc_LogOut("%d\tHDLC FRAME: ERROR (frame_length_bits%%8)!=0\r\n", offset);
         }
 
         *err=INVALID_FR_LEN;
@@ -306,13 +310,17 @@ int hdlc_CRC_match(uint8_t hdlc_frame[MAX_HDLC_FR_LEN], int frame_size)
 
     if ((frame_size<5)||(frame_size>=MAX_HDLC_FR_LEN)) return 0;
 
-    compute_crc16(hdlc_frame, frame_size, hdlc_crc);
+    compute_crc16(hdlc_frame, frame_size - sizeof(hdlc_crc), hdlc_crc);
 
     hdlc_crc[0]    =    (~(hdlc_crc[0]));
     hdlc_crc[1]    =    (~(hdlc_crc[1]));
 
     if ((hdlc_crc[0]==hdlc_frame[frame_size-2])&&(hdlc_crc[1]==hdlc_frame[frame_size-1])) return 1;
     else return 0;
+}
+
+void funCb_HDLC_FrameTimeOut_DEF(void *instance_cb) {
+    instance_cb = instance_cb;
 }
 
 /****************************************************************************/

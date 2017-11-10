@@ -16,9 +16,15 @@
 #endif
 
 #if USE_CRC16_X25
+    #define CRC_LSB                     1
+    #define CRC_HSB                     0
     #define USE_CRC16_CCITT_FALSE       0
 #elif USE_CRC16_CCITT_FALSE
+    #define CRC_LSB                     0
+    #define CRC_HSB                     1
     #define USE_CRC16_X25               0
+#else
+    #error "Must choose the calculation algorithm CRC-16."
 #endif
 
 void compute_crc16(uint8_t data[], int size, uint8_t crc[2]);

@@ -69,7 +69,6 @@ void compute_crc16(uint8_t data[], int size, uint8_t crc[2]){
             fcs = (fcs >> 8) ^ CrcTable[(data[j] ^ fcs) & 0xFF];
         #endif  
     }
-
-    crc[0] = ((fcs & 0xFF00) >> 8);
-    crc[1] = (fcs & 0x00FF);
+    crc[CRC_LSB] = ((fcs & 0xFF00) >> 8);
+    crc[CRC_HSB] = (fcs & 0x00FF);
 }

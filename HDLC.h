@@ -24,7 +24,8 @@
 /****************************************************************************/
 /*                          TYPEDEFS AND STRUCTURES                         */
 /****************************************************************************/
-typedef void(*Fun_CallBack_HDLC)(void *instance_cb, uint8_t *fr, uint16_t len);
+typedef void(*FunCb_HDLC_RecieverFrame)(void *instance_cb, uint8_t *fr, uint16_t len);
+typedef void(*FunCb_HDLC_FrameTimeOut)(void *instance_cb);
 
 /* HDLC FSM States */
 typedef enum hdlc_fr_detect_states
@@ -44,20 +45,24 @@ typedef enum hdlc_fr_detect_errors
     MAX_HDLC_FR_DETECT_ERRORS
 }hdlc_fr_detect_errors_e;
 
+/* context for hdlc CallBack function */
+typedef struct hdlc_callback {
+    void*                       instance_cb;
+    FunCb_HDLC_RecieverFrame    cb_RecieverFrame;
+    FunCb_HDLC_FrameTimeOut     cb_ResetFrameTimeOut;
+    FunCb_HDLC_FrameTimeOut     cb_StopFrameTimeOut;
+}hdlc_callback_t;
 /* context for hdlc link */
 typedef struct hdlc_ch_ctxt
 {
-    hdlc_fr_detect_states_e    state;                    /* HDLC frame detection state */
-    hdlc_fr_detect_errors_e    err_type;                /* error type received */        
-    uint16_t        fr_bit_cnt;                /* number of bits received between opening and closing flags (working copy)*/
-    uint16_t        ready_fr_bit_cnt;            /* number of bits received between opening and closing flags (copy for caller)*/
-    uint8_t        flag_pos_ctr;                /* counter for flag matching index in flag_lookup table */
-    uint8_t        rec_bits;                /* stores last 8 bits received */
-    uint8_t        frame_ready;                /* flag to signal a ready frame */
-    uint8_t        frame[MAX_HDLC_FR_LEN_WITH_STUF];    /* stores frame received (working copy)*/
-    uint8_t        ready_fr[MAX_HDLC_FR_LEN_WITH_STUF];    /* stores frame received (copy for caller)*/
-    void*       instance_cb;
-    Fun_CallBack_HDLC   callback;
+    hdlc_fr_detect_states_e    state;                       /* HDLC frame detection state */
+    hdlc_fr_detect_errors_e    err_type;                    /* error type received */        
+    uint16_t        fr_bit_cnt;                             /* number of bits received between opening and closing flags (working copy)*/
+    uint8_t         flag_pos_ctr;                           /* counter for flag matching index in flag_lookup table */
+    uint8_t         rec_bits;                               /* stores last 8 bits received */
+    uint8_t         frame_ready;                            /* flag to signal a ready frame */
+    uint8_t         frame[MAX_HDLC_FR_LEN_WITH_STUF];       /* stores frame received (working copy)*/
+    hdlc_callback_t callback;
 }hdlc_ch_ctxt_t;
 
 /****************************************************************************/
@@ -66,6 +71,12 @@ typedef struct hdlc_ch_ctxt
 
 #ifndef HDLC_C
 #endif //HDLC_C
+/****************************************************************************/
+/*                             PRIVATE VARIABLES                           */
+/****************************************************************************/
+#ifdef HDLC_PRIVATE
+    void funCb_HDLC_FrameTimeOut_DEF(void *instance_cb);
+#endif //HDLC_PRIVATE
 /*
 * HDLC frame detection algorithm.
 *
@@ -78,13 +89,19 @@ void HDLC(uint8_t inp8, int offset, hdlc_ch_ctxt_t *hdlc_ch_ctxt);
 /*
 * Intializes HDLC frame detection algorithm context.
 *
-* hdlc_ch_ctxt    - HDLC Link Context
-* cb        - Application Callback on frame detection
-* fr        - HDLC frame detected on link
-* len        - HDLC frame length
-* offset    - Stream Offset
+* @param hdlc_ch_ctxt   - HDLC Link Context
+* @param callback       - Application Callback 
+* @return               - Function for resetting FRAME detection
 */
-void HDLC_init(hdlc_ch_ctxt_t *hdlc_ch_ctxt, void* instance_cb, Fun_CallBack_HDLC cb);
+void HDLC_init(hdlc_ch_ctxt_t *hdlc_ch_ctxt, hdlc_callback_t *callback);
+
+/*
+* Reset HDLC frame detection.
+*
+* @param hdlc_ch_ctxt   - HDLC Link Context
+*/
+void HDLC_reset(hdlc_ch_ctxt_t *ctxt);
+
 
 /****************************************************************************/
 /*                             VIRTUAL FUNCTIONS                            */
