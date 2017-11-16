@@ -63,7 +63,7 @@ const uint8_t flag_lookup[] = {0xFC, 0xF9, 0xF3, 0xE7, 0xCF, 0x9F, 0x3F, 0x7E};
 /*                             EXPORTED FUNCTIONS                           */
 /****************************************************************************/
 
-void HDLC_init(hdlc_ch_ctxt_t *hdlc_ch_ctxt, hdlc_callback_t *callback)
+void HDLC_init(hdlc_ch_ctxt_t *hdlc_ch_ctxt, hdlc_callback_t *callback, uint16_t FrameTimeOut)
 {
     clear_hdlc_ctxt(hdlc_ch_ctxt);
     // -- Check Valid callback context
@@ -72,7 +72,9 @@ void HDLC_init(hdlc_ch_ctxt_t *hdlc_ch_ctxt, hdlc_callback_t *callback)
             memcpy(&hdlc_ch_ctxt->callback, callback, sizeof(hdlc_ch_ctxt->callback));
         }else hdlc_LogOut("HDLC FRAME: ERROR HDLC context callback is not initialized.\r\n");
         // -- Default set if need
-        hdlc_ch_ctxt->chkFrameTimeOut = 2;
+        hdlc_ch_ctxt->chkFrameTimeOut = (FrameTimeOut)  ? FrameTimeOut : LSB_HDLC_TIMER;
+        hdlc_ch_ctxt->chkFrameTimeOut += LSB_HDLC_TIMER;    // for jitter timer
+        // --
         if (!callback->cb_ResetFrameTimeOut) 
             callback->cb_ResetFrameTimeOut = funCb_HDLC_FrameTimeOut_DEF;
     }else hdlc_LogOut("HDLC FRAME: ERROR HDLC context callback is not initialized.\r\n");
@@ -109,11 +111,12 @@ __exit:
 }
 void HDLC_timer_20ms(hdlc_ch_ctxt_t *ctxt) {
     if (ctxt->cntFrameTimeOut) {
-        if (ctxt->cntFrameTimeOut == 1) {
+        if (ctxt->cntFrameTimeOut == LSB_HDLC_TIMER) {
+            // -- Message for extern application
             ctxt->callback.cb_ResetFrameTimeOut(ctxt->callback.instance_cb);
             HDLC_reset(ctxt);
         }
-        ctxt->cntFrameTimeOut--;
+        ctxt->cntFrameTimeOut -= LSB_HDLC_TIMER;
     }
 }
 

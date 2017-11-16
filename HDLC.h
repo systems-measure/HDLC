@@ -23,6 +23,7 @@
 #ifndef USE_BIT_STAFFING
     #define USE_BIT_STAFFING        0
 #endif
+#define LSB_HDLC_TIMER                  20           // in ms
 
 /****************************************************************************/
 /*                          TYPEDEFS AND STRUCTURES                         */
@@ -107,7 +108,7 @@ bool HDLC(uint8_t inp8, int offset, hdlc_ch_ctxt_t *hdlc_ch_ctxt);
 * @param callback       - Application Callback 
 * @return               - Function for resetting FRAME detection
 */
-void HDLC_init(hdlc_ch_ctxt_t *hdlc_ch_ctxt, hdlc_callback_t *callback);
+void HDLC_init(hdlc_ch_ctxt_t *hdlc_ch_ctxt, hdlc_callback_t *callback, uint16_t FrameTimeOut = LSB_HDLC_TIMER);
 
 /*
 * Reset HDLC frame detection.
