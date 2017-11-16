@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <string.h>
 #include "hdlc_crc.h"
 
@@ -60,7 +61,6 @@ const uint16_t CrcTable[256] = {
 void compute_crc16(uint8_t data[], int size, uint8_t crc[2]){
     int        j = 0;
     uint16_t    fcs = 0xFFFF;
-    uint8_t    datafcs = 0;
 
     for (j = 0; j < size; j++) {
         #if USE_CRC16_CCITT_FALSE

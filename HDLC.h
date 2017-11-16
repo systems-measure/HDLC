@@ -12,9 +12,10 @@
 /****************************************************************************/
 /*                          DEFINITIONS AND MACROS                          */
 /****************************************************************************/
-
-#define TRUE                        1
-#define FALSE                       0
+#ifndef TRUE
+    #define TRUE                    1
+    #define FALSE                   0
+#endif
 
 #define MIN_HDLC_FR_LEN             5           /* Minimum HDLC frame length Allowed */
 #define MAX_HDLC_FR_LEN             900         /* Maximum HDLC frame length Allowed */
