@@ -124,7 +124,11 @@ void HDLC_reset(hdlc_ch_ctxt_t *ctxt);
 */
 void HDLC_timer_20ms(hdlc_ch_ctxt_t *ctxt);
 
-
+/**
+*   @param hdlc_ch_ctxt - HDLC Link Context
+*   @return             - Flag frame ready
+*/
+bool HDLC_GetFrameReady(hdlc_ch_ctxt_t *ctxt);
 /****************************************************************************/
 /*                             VIRTUAL FUNCTIONS                            */
 /****************************************************************************/

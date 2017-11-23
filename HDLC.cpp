@@ -109,6 +109,9 @@ bool HDLC(uint8_t inp8, int offset, hdlc_ch_ctxt_t *hdlc_ch_ctxt)
 __exit:
     return r;
 }
+bool HDLC_GetFrameReady(hdlc_ch_ctxt_t *ctxt){
+    return ctxt->frame_ready;
+}
 void HDLC_timer_20ms(hdlc_ch_ctxt_t *ctxt) {
     if (ctxt->cntFrameTimeOut) {
         if (ctxt->cntFrameTimeOut == LSB_HDLC_TIMER) {
