@@ -72,3 +72,12 @@ void compute_crc16(uint8_t data[], int size, uint8_t crc[2]){
     crc[CRC_LSB] = ((fcs & 0xFF00) >> 8);
     crc[CRC_HSB] = (fcs & 0x00FF);
 }
+uint16_t compute_crc16(uint16_t fcs, uint8_t data){
+    #if USE_CRC16_CCITT_FALSE
+        fcs = (fcs << 8) ^ CrcTable[data ^ (fcs >> 8)];
+    #elif USE_CRC16_X25
+        fcs = (fcs >> 8) ^ CrcTable[(data ^ fcs) & 0xFF];
+    #endif
+
+    return fcs;
+}

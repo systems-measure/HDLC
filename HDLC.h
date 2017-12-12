@@ -24,7 +24,7 @@
 #ifndef USE_BIT_STAFFING
     #define USE_BIT_STAFFING        0
 #endif
-#define LSB_HDLC_TIMER                  20           // in ms
+#define LSB_HDLC_TIMER              20           // in ms
 
 /****************************************************************************/
 /*                          TYPEDEFS AND STRUCTURES                         */
@@ -70,6 +70,7 @@ typedef struct hdlc_ch_ctxt
     uint16_t        cntFrameTimeOut, chkFrameTimeOut;
     int32_t         offset;
     // --
+    uint16_t        fcs;
     uint8_t         frame[MAX_HDLC_FR_LEN_WITH_STUF];       /* stores frame received (working copy)*/
 }hdlc_ch_ctxt_t;
 
@@ -90,6 +91,7 @@ typedef struct hdlc_ch_ctxt
     #else /*!USE_BIT_STAFFING*/
         #define remove_bit_stuffing(dest_fr, src_frame, bit_cnt, byte_cnt, err, offset);
         void remove_byte_stuffing(uint8_t frame[], uint16_t byte_cnt, uint16_t *valid_bytes, hdlc_fr_detect_errors_e *err, int offset);
+        void WorkaroundLackBitStaff(hdlc_ch_ctxt_t *ctxt, int offset);
     #endif /*USE_BIT_STAFFING*/
 #endif //HDLC_PRIVATE
 /*

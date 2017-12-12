@@ -85,9 +85,11 @@ void HDLC_reset(hdlc_ch_ctxt_t *ctxt)
     // --
     ctxt->state = FLAG_SEARCH;
     ctxt->err_type = NO_ERR;
-    memset(ctxt->frame, 0, sizeof(ctxt->frame));
     ctxt->offset = 0;
     ctxt->frame_ready = FALSE;
+#   if USE_BIT_STAFFING
+        memset(ctxt->frame, 0, sizeof(ctxt->frame));
+#   endif
 }
 
 bool HDLC(uint8_t inp8, int offset, hdlc_ch_ctxt_t *hdlc_ch_ctxt)
@@ -151,14 +153,7 @@ void handle_hdlc_frame(hdlc_ch_ctxt_t *ctxt, int offset)
         {    
             ctxt->err_type = CRC_MISMATCH;
             hdlc_LogOut("%d\tHDLC FRAME: ERROR %d (CRC_MISMATCH)\r\n", offset, ctxt->err_type);
-            ctxt->err_type = NO_ERR;    /* Handle Error & Reset */
-            ctxt->offset = 0;
-            // -- Because no bitstafàing - then this crutch closes the hole.
-            ctxt->frame[ctxt->fr_byte_cnt++] = FLAG;
-            if (MAX_HDLC_FR_LEN_WITH_STUF < ctxt->fr_byte_cnt) {
-                ctxt->state = FLAG_SEARCH;
-                hdlc_LogOut("%d\tHDLC FRAME: ERROR frame length exceeded during RX\r\n", offset);
-            }
+            WorkaroundLackBitStaff(ctxt, offset);
         }
     }
     else
@@ -178,6 +173,21 @@ void clear_hdlc_ctxt(hdlc_ch_ctxt_t *hdlc_ch_ctxt)
     // --
     hdlc_ch_ctxt->state=FLAG_SEARCH;
     hdlc_ch_ctxt->err_type=NO_ERR;
+}
+/*
+*  
+*/
+void WorkaroundLackBitStaff(hdlc_ch_ctxt_t *ctxt, int offset) {
+    ctxt->err_type = NO_ERR;    /* Handle Error & Reset */
+    ctxt->offset = 0;
+    // -- Because no bitstafàing - then this crutch closes the hole.
+    ctxt->fcs = compute_crc16(ctxt->fcs, FLAG);
+    ctxt->frame[ctxt->fr_byte_cnt++] = FLAG;
+    if (MAX_HDLC_FR_LEN_WITH_STUF < ctxt->fr_byte_cnt) {
+        ctxt->state = FLAG_SEARCH;
+        ctxt->fr_byte_cnt = 0;
+        hdlc_LogOut("%d\tHDLC FRAME: ERROR frame length exceeded during RX\r\n", offset);
+    }
 }
 
 /*
@@ -297,6 +307,7 @@ void detect_hdlc_frame(hdlc_ch_ctxt_t *ctxt, uint8_t rec_byte, int offset){
         if (FLAG == rec_byte){
             ctxt->state = FRAME_RX;
             ctxt->fr_byte_cnt = 0;
+            ctxt->fcs = 0xFFFF;
         }
         break;
     case    FRAME_RX:
@@ -310,9 +321,12 @@ void detect_hdlc_frame(hdlc_ch_ctxt_t *ctxt, uint8_t rec_byte, int offset){
             }
 
             /* Ready HDLC frame */
-            ctxt->frame_ready = TRUE;
+            if (ctxt->fcs == FCS_CONST) {
+                ctxt->frame_ready = TRUE;
+            }else WorkaroundLackBitStaff(ctxt, offset);
         }
         else {
+            ctxt->fcs = compute_crc16(ctxt->fcs, rec_byte);
             ctxt->frame[ctxt->fr_byte_cnt++] = rec_byte;
             if (MAX_HDLC_FR_LEN_WITH_STUF < ctxt->fr_byte_cnt) {
                 ctxt->state = FLAG_SEARCH;

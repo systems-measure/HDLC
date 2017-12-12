@@ -15,6 +15,8 @@
     #define USE_CRC16_X25               1
 #endif
 
+#define FCS_CONST                   0xF0B8
+
 #if USE_CRC16_X25
     #define CRC_LSB                     1
     #define CRC_HSB                     0
@@ -28,3 +30,4 @@
 #endif
 
 void compute_crc16(uint8_t data[], int size, uint8_t crc[2]);
+uint16_t compute_crc16(uint16_t fcs, uint8_t data);
