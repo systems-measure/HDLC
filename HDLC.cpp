@@ -72,8 +72,7 @@ void HDLC_init(hdlc_ch_ctxt_t *hdlc_ch_ctxt, hdlc_callback_t *callback, uint16_t
             memcpy(&hdlc_ch_ctxt->callback, callback, sizeof(hdlc_ch_ctxt->callback));
         }else hdlc_LogOut("HDLC FRAME: ERROR HDLC context callback is not initialized.\r\n");
         // -- Default set if need
-        hdlc_ch_ctxt->chkFrameTimeOut = (FrameTimeOut)  ? FrameTimeOut : LSB_HDLC_TIMER;
-        hdlc_ch_ctxt->chkFrameTimeOut += LSB_HDLC_TIMER;    // for jitter timer
+        HDLC_UpdateFrameTimeOut(hdlc_ch_ctxt, FrameTimeOut);
         // --
         if (!callback->cb_ResetFrameTimeOut) 
             callback->cb_ResetFrameTimeOut = funCb_HDLC_FrameTimeOut_DEF;
@@ -90,6 +89,10 @@ void HDLC_reset(hdlc_ch_ctxt_t *ctxt)
 #   if USE_BIT_STAFFING
         memset(ctxt->frame, 0, sizeof(ctxt->frame));
 #   endif
+}
+void HDLC_UpdateFrameTimeOut(hdlc_ch_ctxt_t *ctxt, uint16_t newFrameTimeOut) {
+    ctxt->chkFrameTimeOut = (newFrameTimeOut) ? newFrameTimeOut : LSB_HDLC_TIMER;
+    ctxt->chkFrameTimeOut += LSB_HDLC_TIMER;    // for jitter timer
 }
 
 bool HDLC(uint8_t inp8, int offset, hdlc_ch_ctxt_t *hdlc_ch_ctxt)

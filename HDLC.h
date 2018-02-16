@@ -121,6 +121,11 @@ void HDLC_init(hdlc_ch_ctxt_t *hdlc_ch_ctxt, hdlc_callback_t *callback, uint16_t
 void HDLC_reset(hdlc_ch_ctxt_t *ctxt);
 
 /**
+* UpdateFrameTimeOut HDLC
+* @param newFrameTimeOut   - HDLC new FrameTimeOut
+*/
+void HDLC_UpdateFrameTimeOut(hdlc_ch_ctxt_t *ctxt, uint16_t newFrameTimeOut);
+/**
 * TimeOut HDLC 20 ms
 * @param hdlc_ch_ctxt   - HDLC Link Context
 */
