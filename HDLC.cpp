@@ -29,6 +29,12 @@
 /*                          TYPEDEFS AND STRUCTURES                         */
 /****************************************************************************/
 
+typedef enum {
+	enRcvOk = 0,
+	enRcvContinue,
+	enRcvRst
+}enRecieveState;
+
 /****************************************************************************/
 /*                            EXTERNAL VARIABLES                            */
 /****************************************************************************/
@@ -45,6 +51,7 @@ void clear_hdlc_ctxt(hdlc_ch_ctxt_t *hdlc_ch_ctxt);
 void detect_hdlc_frame(hdlc_ch_ctxt_t *hdlc_ch_ctxt, uint8_t rec_byte, int offset);
 int hdlc_CRC_match(uint8_t hdlc_frame[MAX_HDLC_FR_LEN],int frame_size);
 void handle_hdlc_frame(hdlc_ch_ctxt_t *ctxt, int offset);
+enRecieveState CheckFrmtLength(hdlc_ch_ctxt_t *hdlc_ch_ctxt);
 
 /****************************************************************************/
 /*                             EXPORTED VARIABLES                           */
@@ -165,6 +172,20 @@ void handle_hdlc_frame(hdlc_ch_ctxt_t *ctxt, int offset)
         ctxt->err_type = NO_ERR;    /* Handle Error & Reset */
         ctxt->offset = 0;
     }
+}
+
+enRecieveState CheckFrmtLength(hdlc_ch_ctxt_t *ctxt) {
+	if (((ctxt->frame[0] & 0xA0) != 0xA0) ||
+		(ctxt->frame[1] > MAX_HDLC_FR_LEN) || 
+		(ctxt->frame[1] < MIN_HDLC_FR_LEN)) {
+		return enRcvRst;
+	}
+	if (ctxt->frame[1] == ctxt->fr_byte_cnt) {
+		return enRcvOk;
+	}
+	else {
+		return enRcvContinue;
+	}
 }
 
 /*
@@ -324,12 +345,19 @@ void detect_hdlc_frame(hdlc_ch_ctxt_t *ctxt, uint8_t rec_byte, int offset){
             }
 
             /* Ready HDLC frame */
-            if (ctxt->fcs == FCS_CONST) {
-                // -- WorkaroundLackBitStaff [bug](https://docs.google.com/spreadsheets/d/1foWFAnTxK6nbapbn0DVWvnCNu2wQ0aceK29jHTP_tcI/edit#gid=1671087672&range=B31)
-                if(ctxt->frame[1] == ctxt->fr_byte_cnt){
+            // -- WorkaroundLackBitStaff [bug](https://docs.google.com/spreadsheets/d/1foWFAnTxK6nbapbn0DVWvnCNu2wQ0aceK29jHTP_tcI/edit#gid=1671087672&range=B31)
+			enRecieveState cur_st = CheckFrmtLength(ctxt);
+            if (ctxt->fcs == FCS_CONST && cur_st == enRcvOk) {
                     ctxt->frame_ready = TRUE;
-                }else WorkaroundLackBitStaff(ctxt, offset);
+            }else
+				if (cur_st == enRcvContinue) {
+					WorkaroundLackBitStaff(ctxt, offset);
             }else WorkaroundLackBitStaff(ctxt, offset);
+        }
+        else {
+					HDLC_reset(ctxt);
+					break;
+				}
         }
         else {
             ctxt->fcs = compute_crc16(ctxt->fcs, rec_byte);

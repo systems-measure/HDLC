@@ -18,8 +18,8 @@
 #endif
 
 #define MIN_HDLC_FR_LEN             5           /* Minimum HDLC frame length Allowed */
-#define MAX_HDLC_FR_LEN             900         /* Maximum HDLC frame length Allowed */
-#define MAX_HDLC_FR_LEN_WITH_STUF   ((MAX_HDLC_FR_LEN * (4/3)))    /* HDLC frame length + Stuffing bits */
+#define MAX_HDLC_FR_LEN             256         /* Maximum HDLC frame length Allowed */
+#define MAX_HDLC_FR_LEN_WITH_STUF   ((MAX_HDLC_FR_LEN * 4)/3)    /* HDLC frame length + Stuffing bits */
 #define USE_CRC16_X25               1
 #ifndef USE_BIT_STAFFING
     #define USE_BIT_STAFFING        0
