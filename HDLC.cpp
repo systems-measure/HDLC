@@ -325,7 +325,10 @@ void detect_hdlc_frame(hdlc_ch_ctxt_t *ctxt, uint8_t rec_byte, int offset){
 
             /* Ready HDLC frame */
             if (ctxt->fcs == FCS_CONST) {
-                ctxt->frame_ready = TRUE;
+                // -- WorkaroundLackBitStaff [bug](https://docs.google.com/spreadsheets/d/1foWFAnTxK6nbapbn0DVWvnCNu2wQ0aceK29jHTP_tcI/edit#gid=1671087672&range=B31)
+                if(ctxt->frame[1] == ctxt->fr_byte_cnt){
+                    ctxt->frame_ready = TRUE;
+                }else WorkaroundLackBitStaff(ctxt, offset);
             }else WorkaroundLackBitStaff(ctxt, offset);
         }
         else {
