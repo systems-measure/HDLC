@@ -352,7 +352,6 @@ void detect_hdlc_frame(hdlc_ch_ctxt_t *ctxt, uint8_t rec_byte, int offset){
             }else
 				if (cur_st == enRcvContinue) {
 					WorkaroundLackBitStaff(ctxt, offset);
-            }else WorkaroundLackBitStaff(ctxt, offset);
         }
         else {
 					HDLC_reset(ctxt);
