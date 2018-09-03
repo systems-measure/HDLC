@@ -118,7 +118,6 @@ bool HDLC(uint8_t inp8, int offset, hdlc_ch_ctxt_t *hdlc_ch_ctxt)
         }
     }
 
-__exit:
     return r;
 }
 bool HDLC_GetFrameReady(hdlc_ch_ctxt_t *ctxt){
@@ -349,16 +348,15 @@ void detect_hdlc_frame(hdlc_ch_ctxt_t *ctxt, uint8_t rec_byte, int offset){
 			enRecieveState cur_st = CheckFrmtLength(ctxt);
             if (ctxt->fcs == FCS_CONST && cur_st == enRcvOk) {
                     ctxt->frame_ready = TRUE;
-            }else
+            }else{
 				if (cur_st == enRcvContinue) {
 					WorkaroundLackBitStaff(ctxt, offset);
-        }
-        else {
+                } else {
 					HDLC_reset(ctxt);
 					break;
 				}
-        }
-        else {
+            }
+        } else {
             ctxt->fcs = compute_crc16(ctxt->fcs, rec_byte);
             ctxt->frame[ctxt->fr_byte_cnt++] = rec_byte;
             if (MAX_HDLC_FR_LEN_WITH_STUF < ctxt->fr_byte_cnt) {
