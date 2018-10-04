@@ -70,6 +70,7 @@ typedef struct hdlc_ch_ctxt
     uint16_t        cntFrameTimeOut, chkFrameTimeOut;
     int32_t         offset;
     // --
+    uint16_t        valid_bytes;
     uint16_t        fcs;
     uint8_t         frame[MAX_HDLC_FR_LEN_WITH_STUF];       /* stores frame received (working copy)*/
 }hdlc_ch_ctxt_t;
@@ -136,6 +137,11 @@ void HDLC_timer_20ms(hdlc_ch_ctxt_t *ctxt);
 *   @return             - Flag frame ready
 */
 bool HDLC_GetFrameReady(hdlc_ch_ctxt_t *ctxt);
+/**
+*   @param hdlc_ch_ctxt - HDLC Link Context
+*   @return             - Flag frame ready
+*/
+void HDLC_GetFrame_to_callback(hdlc_ch_ctxt_t *ctxt);
 /****************************************************************************/
 /*                             VIRTUAL FUNCTIONS                            */
 /****************************************************************************/

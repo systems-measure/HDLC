@@ -123,6 +123,9 @@ bool HDLC(uint8_t inp8, int offset, hdlc_ch_ctxt_t *hdlc_ch_ctxt)
 bool HDLC_GetFrameReady(hdlc_ch_ctxt_t *ctxt){
     return ctxt->frame_ready;
 }
+void HDLC_GetFrame_to_callback(hdlc_ch_ctxt_t *ctxt){
+    ctxt->callback.cb_RecieverFrame(ctxt->callback.instance_cb, ctxt->frame, ctxt->valid_bytes); /* Call Application */    
+}
 void HDLC_timer_20ms(hdlc_ch_ctxt_t *ctxt) {
     if (ctxt->cntFrameTimeOut) {
         if (ctxt->cntFrameTimeOut == LSB_HDLC_TIMER) {
@@ -156,7 +159,7 @@ void handle_hdlc_frame(hdlc_ch_ctxt_t *ctxt, int offset)
         {
             ctxt->frame_ready = TRUE;
             ctxt->cntFrameTimeOut = 0;  ///< Stop Frame TimeOut
-            ctxt->callback.cb_RecieverFrame(ctxt->callback.instance_cb, ctxt->frame, valid_bytes); /* Call Application */
+            ctxt->valid_bytes = valid_bytes;
         }
         else
         {    
