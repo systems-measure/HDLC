@@ -148,29 +148,18 @@ void handle_hdlc_frame(hdlc_ch_ctxt_t *ctxt, int offset)
 {
     uint16_t    valid_bytes = 0;
 
-    ctxt->frame_ready = FALSE;
-
     remove_bit_stuffing(ctxt->frame, ctxt->frame, ctxt->fr_bit_cnt, &valid_bytes, &ctxt->err_type, offset);
     remove_byte_stuffing(ctxt->frame, ctxt->fr_byte_cnt, &valid_bytes, &ctxt->err_type, offset);
 
-    if(NO_ERR == ctxt->err_type)
-    {
-        if (hdlc_CRC_match(ctxt->frame, valid_bytes))
-        {
-            ctxt->frame_ready = TRUE;
-            ctxt->cntFrameTimeOut = 0;  ///< Stop Frame TimeOut
-            ctxt->valid_bytes = valid_bytes;
-        }
-        else
-        {    
-            ctxt->err_type = CRC_MISMATCH;
-            hdlc_LogOut("%d\tHDLC FRAME: ERROR %d (CRC_MISMATCH)\r\n", offset, ctxt->err_type);
-            WorkaroundLackBitStaff(ctxt, offset);
-        }
-    }
+	if (NO_ERR == ctxt->err_type)
+	{
+		ctxt->cntFrameTimeOut = 0;  ///< Stop Frame TimeOut
+		ctxt->valid_bytes = valid_bytes;
+	}
     else
     {
         hdlc_LogOut("%d\tHDLC FRAME: ERROR %d\r\n", offset, ctxt->err_type);
+		ctxt->frame_ready = FALSE;
         ctxt->err_type = NO_ERR;    /* Handle Error & Reset */
         ctxt->offset = 0;
     }
