@@ -166,15 +166,14 @@ void handle_hdlc_frame(hdlc_ch_ctxt_t *ctxt, int offset)
 }
 
 enRecieveState CheckFrmtLength(hdlc_ch_ctxt_t *ctxt) {
-	if (((ctxt->frame[0] & 0xA0) != 0xA0) ||
-		(ctxt->frame[1] > MAX_HDLC_FR_LEN) || 
-		(ctxt->frame[1] < MIN_HDLC_FR_LEN)) {
+	if ( ((ctxt->frame[0] & 0xA0) != 0xA0) ||
+		   ( ((ctxt->frame[1] > MAX_HDLC_FR_LEN) || 
+		     (ctxt->frame[1] < MIN_HDLC_FR_LEN)) && (ctxt->fr_byte_cnt >= 2)) ) {
 		return enRcvRst;
 	}
-	if (ctxt->frame[1] == ctxt->fr_byte_cnt) {
+	if ((ctxt->frame[1] == ctxt->fr_byte_cnt) && (ctxt->fr_byte_cnt >= 2)) {
 		return enRcvOk;
-	}
-	else {
+	} else {
 		return enRcvContinue;
 	}
 }
@@ -327,14 +326,6 @@ void detect_hdlc_frame(hdlc_ch_ctxt_t *ctxt, uint8_t rec_byte, int offset){
         break;
     case    FRAME_RX:
         if (FLAG == rec_byte){
-            if (MIN_HDLC_FR_LEN > ctxt->fr_byte_cnt) /* error: invalid frame length */
-            {
-                ctxt->fr_byte_cnt = 0;
-                ctxt->state = FRAME_RX;
-                hdlc_LogOut("%d\tHDLC FRAME: ERROR frame length less than %d bits\r\n", offset, MIN_HDLC_FR_LEN);
-                break;
-            }
-
             /* Ready HDLC frame */
             // -- WorkaroundLackBitStaff [bug](https://docs.google.com/spreadsheets/d/1foWFAnTxK6nbapbn0DVWvnCNu2wQ0aceK29jHTP_tcI/edit#gid=1671087672&range=B31)
 			enRecieveState cur_st = CheckFrmtLength(ctxt);
