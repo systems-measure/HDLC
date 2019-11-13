@@ -30,4 +30,5 @@
 #endif
 
 void compute_crc16(uint8_t data[], int size, uint8_t crc[2]);
+uint16_t compute_crc16(uint8_t* data, uint16_t size, uint16_t fcs = 0xFFFF);
 uint16_t compute_crc16(uint16_t fcs, uint8_t data);
