@@ -166,12 +166,13 @@ void handle_hdlc_frame(hdlc_ch_ctxt_t *ctxt, int offset)
 }
 
 enRecieveState CheckFrmtLength(hdlc_ch_ctxt_t *ctxt) {
+  uint16_t length = (uint16_t)((ctxt->frame[0] & 0x07) << 8) + ctxt->frame[1];
 	if ( ((ctxt->frame[0] & 0xA0) != 0xA0) ||
-		   ( ((ctxt->frame[1] > MAX_HDLC_FR_LEN) || 
-		     (ctxt->frame[1] < MIN_HDLC_FR_LEN)) && (ctxt->fr_byte_cnt >= 2)) ) {
+		   ( ((length > MAX_HDLC_FR_LEN) || 
+		     (length < MIN_HDLC_FR_LEN)) && (ctxt->fr_byte_cnt >= 2)) ) {
 		return enRcvRst;
 	}
-	if ((ctxt->frame[1] == ctxt->fr_byte_cnt) && (ctxt->fr_byte_cnt >= 2)) {
+	if ((length == ctxt->fr_byte_cnt) && (ctxt->fr_byte_cnt >= 2)) {
 		return enRcvOk;
 	} else {
 		return enRcvContinue;
